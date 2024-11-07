@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Website Status Check</title>
     <style>
+        /* Font face definitions */
         @font-face {
             font-family: 'Visby Round Bold';
             src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Bold.otf') format('opentype');
@@ -25,6 +26,7 @@
             src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Regular.otf') format('opentype');
         }
 
+        /* Base styles */
         body {
             font-family: 'Visby Round Regular', Arial, sans-serif;
             background-color: #f4f4f4;
@@ -49,32 +51,31 @@
 
         .recent-changes {
             display: flex;
-            justify-content: space-between;
+            gap: 20px;
             margin: 20px 0;
             padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #fff;
         }
 
         .offline-websites, .online-websites {
             flex: 1;
-            margin: 0 10px;
         }
 
         h2 {
             font-size: 1.5em;
             color: #333;
             margin-bottom: 10px;
+            text-align: center;
         }
 
         #offline-list, #online-list {
             background-color: #f9f9f9;
             padding: 10px;
             border-radius: 4px;
-            max-height: 200px;
-            overflow-y: auto;
             border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .status-card {
@@ -86,6 +87,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             background: #f9f9f9;
+            width: 100%;
         }
 
         .status-dot {
@@ -103,23 +105,28 @@
             background-color: #dc3545;
         }
 
-        .visit-button {
-            text-decoration: none;
-            color: #fff;
-            background-color: #007bff;
-            padding: 5px 10px;
-            border-radius: 4px;
-            transition: background-color 0.3s ease;
-        }
-
-        .visit-button:hover {
-            background-color: #0056b3;
-        }
-
-        .no-changes {
-            text-align: center;
+        .no-sites {
             color: #888;
             font-style: italic;
+            text-align: center;
+        }
+
+        .website-name {
+            flex: 1;
+            text-align: left;
+        }
+
+        .svg-placeholder {
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+        }
+
+        /* Responsive styling for mobile view */
+        @media (max-width: 768px) {
+            .recent-changes {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -129,11 +136,15 @@
         <div class="recent-changes">
             <div class="online-websites">
                 <h2>Online Websites</h2>
-                <div id="online-list" class="status-list"></div>
+                <div id="online-list" class="status-list">
+                    <span class="no-sites">No Sites</span>
+                </div>
             </div>
             <div class="offline-websites">
                 <h2>Offline Websites</h2>
-                <div id="offline-list" class="status-list"></div>
+                <div id="offline-list" class="status-list">
+                    <span class="no-sites">No Sites</span>
+                </div>
             </div>
         </div>
         <div class="loading-spinner"></div>
@@ -142,41 +153,64 @@
     <script>
         async function fetchStatusData() {
             try {
-                const response = await fetch('https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/output.txt');
-                const text = await response.text();
+                const statusResponse = await fetch('https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/output.txt');
+                const svgResponse = await fetch('https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/svg.txt');
+                const statusText = await statusResponse.text();
+                const svgText = await svgResponse.text();
+
                 const onlineList = document.getElementById('online-list');
                 const offlineList = document.getElementById('offline-list');
 
-                text.split('\n').forEach(line => {
+                onlineList.innerHTML = '';
+                offlineList.innerHTML = '';
+
+                const statusLines = statusText.trim().split('\n');
+                const svgPaths = svgText.trim().split('\n');
+
+                let onlineCount = 0;
+                let offlineCount = 0;
+
+                statusLines.forEach((line, index) => {
                     if (!line.trim()) return;
-                    
+
                     const [websitePart, statusPart] = line.split(' - ');
                     const websiteName = websitePart.replace('Website: ', '').trim();
                     const status = statusPart.replace('Status: ', '').trim();
-                    
+                    const svgPath = svgPaths[index] || '';
+
                     const statusCard = document.createElement('div');
                     statusCard.classList.add('status-card');
+
+                    const websiteText = document.createElement('span');
+                    websiteText.textContent = websiteName;
+                    websiteText.classList.add('website-name');
+                    statusCard.appendChild(websiteText);
 
                     const statusDot = document.createElement('div');
                     statusDot.classList.add('status-dot', status === '200' ? 'green' : 'red');
                     statusCard.appendChild(statusDot);
 
-                    const websiteText = document.createElement('span');
-                    websiteText.textContent = websiteName;
-                    statusCard.appendChild(websiteText);
-
-                    const visitButton = document.createElement('a');
-                    visitButton.textContent = 'Visit';
-                    visitButton.href = '#'; // Change to actual link if available
-                    visitButton.classList.add('visit-button');
-                    statusCard.appendChild(visitButton);
+                    const svgIcon = document.createElement('img');
+                    svgIcon.src = svgPath;
+                    svgIcon.alt = 'Website Icon';
+                    svgIcon.classList.add('svg-placeholder');
+                    statusCard.appendChild(svgIcon);
 
                     if (status === '200') {
                         onlineList.appendChild(statusCard);
+                        onlineCount++;
                     } else {
                         offlineList.appendChild(statusCard);
+                        offlineCount++;
                     }
                 });
+
+                if (onlineCount === 0) {
+                    onlineList.innerHTML = '<span class="no-sites">No Sites</span>';
+                }
+                if (offlineCount === 0) {
+                    offlineList.innerHTML = '<span class="no-sites">No Sites</span>';
+                }
             } catch (error) {
                 console.error('Error fetching the data:', error);
             }
