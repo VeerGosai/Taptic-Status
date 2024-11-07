@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Status Check</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to the external CSS file -->
+</head>
+<body>
+    <div class="container">
+        <h1>Website Status Check</h1>
+        <input type="text" id="search" placeholder="Search for a website..." />
+        
+        <!-- Loading spinner -->
+        <div id="loading-spinner" class="loading-spinner"></div>
+        
+        <!-- Recent Changes Section -->
+        <div class="recent-changes">
+            <div class="offline-websites">
+                <h2>Recently Gone Offline</h2>
+                <div id="offline-list">
+                    <!-- Offline websites will be populated here -->
+                </div>
+            </div>
+            <div class="online-websites">
+                <h2>Recently Come Back Online</h2>
+                <div id="online-list">
+                    <!-- Online websites will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="status-list"></div>
+        <div class="no-changes" id="no-changes-message" style="display: none;">No Changes</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const statusList = document.getElementById('status-list');
+            const offlineList = document.getElementById('offline-list');
+            const onlineList = document.getElementById('online-list');
+            const noChangesMessage = document.getElementById('no-changes-message');
+
+            // Show the loading spinner
+            loadingSpinner.style.display = 'block';
+
+            // Fetch the results from the current and previous status files
+            Promise.all([
+                fetch('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/1.txt'), // Current status
+                fetch('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/2.txt') // Previous status
+            ])
+            .then(responses => Promise.all(responses.map(response => response.text())))
+            .then(([currentData, oldData]) => {
+                const currentLines = currentData.trim().split('\n');
+                const oldLines = oldData.trim().split('\n');
+
+                const currentSites = {};
+                const oldSites = {};
+
+                // Process current statuses
+                currentLines.forEach(line => {
+                    const parts = line.split(' - Status: ');
+                    if (parts.length === 2) {
+                        const title = parts[0].trim().replace('Website: ', '');
+                        const status = parts[1].trim();
+                        currentSites[title] = status;
+                    }
+                });
+
+                // Process old statuses
+                oldLines.forEach(line => {
+                    const parts = line.split(' - Status: ');
+                    if (parts.length === 2) {
+                        const title = parts[0].trim().replace('Website: ', '');
+                        const status = parts[1].trim();
+                        oldSites[title] = status;
+                    }
+                });
+
+                let changesDetected = false;
+
+                // Compare current and old statuses
+                for (const title in currentSites) {
+                    const currentStatus = currentSites[title];
+                    const oldStatus = oldSites[title]; // Get the previous status
+
+                    // Check for status changes
+                    if (oldStatus === '200' && currentStatus === 'Offline') {
+                        // Recently Gone Offline
+                        const offlineItem = document.createElement('div');
+                        offlineItem.textContent = title;
+                        offlineList.appendChild(offlineItem);
+                        changesDetected = true;
+                    } else if (oldStatus === 'Offline' && currentStatus === '200') {
+                        // Recently Come Back Online
+                        const onlineItem = document.createElement('div');
+                        onlineItem.textContent = title;
+                        onlineList.appendChild(onlineItem);
+                        changesDetected = true;
+                    }
+                }
+
+                // Check for any websites that were in the old list but are no longer present
+                for (const title in oldSites) {
+                    if (!(title in currentSites)) {
+                        const oldStatus = oldSites[title];
+                        if (oldStatus === '200') {
+                            // Was online and now it's gone
+                            const offlineItem = document.createElement('div');
+                            offlineItem.textContent = title + " - Status: Offline (Was Online)";
+                            offlineList.appendChild(offlineItem);
+                            changesDetected = true;
+                        }
+                    }
+                }
+
+                // Display message if no changes
+                if (!changesDetected) {
+                    noChangesMessage.style.display = 'block';
+                }
+
+                // Create status cards for current sites
+                currentLines.forEach(line => {
+                    const parts = line.split(' - Status: ');
+                    if (parts.length === 2) {
+                        const title = parts[0].trim().replace('Website: ', '');
+                        const status = parts[1].trim();
+                        fetchSitesData(title).then(url => {
+                            createStatusElement(title, status, url);
+                        });
+                    }
+                });
+
+                attachSearchFunctionality(); // Attach search functionality after creating elements
+
+                // Hide the loading spinner once the data has been loaded
+                loadingSpinner.style.display = 'none';
+                statusList.style.display = 'block'; // Ensure status list is displayed
+            })
+            .catch(error => {
+                console.error('Error loading artifact:', error);
+                // Hide the spinner in case of error as well
+                loadingSpinner.style.display = 'none';
+            });
+        });
+
+        function fetchSitesData(title) {
+            // Fetch the sites.txt to get the URL associated with each title
+            return fetch('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/sites.txt') // Adjust the URL if the branch is different
+                .then(response => response.text())
+                .then(data => {
+                    const sites = data.trim().split('\n');
+                    for (const site of sites) {
+                        const [url, siteTitle] = site.split(',');
+                        if (siteTitle.trim() === title) {
+                            return url; // Return the URL if the title matches
+                        }
+                    }
+                    return ''; // Return an empty string if no match found
+                })
+                .catch(error => {
+                    console.error('Error loading sites:', error);
+                    return ''; // Return an empty string in case of error
+                });
+        }
+
+        function createStatusElement(title, status, url) {
+            const statusList = document.getElementById('status-list');
+            const statusCard = document.createElement('div');
+            statusCard.className = 'status-card';
+            const statusDotClass = status === 'Offline' ? 'red' : 'green'; // Adjusted for Offline check
+            statusCard.innerHTML = `
+                <span class="status-dot ${statusDotClass}"></span>
+                <span style="flex-grow: 1; text-align: center;">${title}</span>
+                <a href="${url}" target="_blank" class="visit-button">Visit</a>
+            `;
+            statusList.appendChild(statusCard);
+        }
+
+        function attachSearchFunctionality() {
+            const searchInput = document.getElementById('search');
+            searchInput.addEventListener('input', function() {
+                const filter = searchInput.value.toLowerCase();
+                const statusCards = document.querySelectorAll('.status-card');
+                statusCards.forEach(card => {
+                    const titleText = card.querySelector('span:nth-child(2)').textContent.toLowerCase(); // Title text
+                    card.style.display = titleText.includes(filter) ? '' : 'none'; // Filter by title
+                });
+            });
+        }
+    </script>
+</body>
+</html>
