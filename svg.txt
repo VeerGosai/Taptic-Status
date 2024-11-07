@@ -1,0 +1,3 @@
+https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/SVG/SAPapers.svg
+https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/SVG/RwandaPapers.svg
+https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/SVG/ZambiaPapers.svg
