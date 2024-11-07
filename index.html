@@ -4,82 +4,185 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Website Status Check</title>
-    <link rel="stylesheet" href="styles.css"> <!-- Link to the external CSS file -->
+    <style>
+        @font-face {
+            font-family: 'Visby Round Bold';
+            src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Bold.otf') format('opentype');
+        }
+
+        @font-face {
+            font-family: 'Visby Round Extra Bold';
+            src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Extra%20Bold.otf') format('opentype');
+        }
+
+        @font-face {
+            font-family: 'Visby Round Heavy';
+            src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Heavy.otf') format('opentype');
+        }
+
+        @font-face {
+            font-family: 'Visby Round Regular';
+            src: url('https://raw.githubusercontent.com/VeerGosai/SA-Gov-Status/main/Fonts/Visby%20Round%20Regular.otf') format('opentype');
+        }
+
+        body {
+            font-family: 'Visby Round Regular', Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        .recent-changes {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+        }
+
+        .offline-websites, .online-websites {
+            flex: 1;
+            margin: 0 10px;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #offline-list, #online-list {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+        }
+
+        .status-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-dot.green {
+            background-color: lightgreen;
+        }
+
+        .status-dot.red {
+            background-color: #dc3545;
+        }
+
+        .visit-button {
+            text-decoration: none;
+            color: #fff;
+            background-color: #007bff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .visit-button:hover {
+            background-color: #0056b3;
+        }
+
+        .no-changes {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Website Status Check</h1>
-        <input type="text" id="search" placeholder="Search for a website..." />
-        
-        <!-- Loading spinner -->
-        <div id="loading-spinner" class="loading-spinner"></div>
-        
-        <!-- Recent Changes Section -->
         <div class="recent-changes">
-            <div class="offline-websites">
-                <h2>Recently Gone Offline</h2>
-                <div id="offline-list">
-                    <!-- Offline websites will be populated here -->
-                </div>
-            </div>
             <div class="online-websites">
-                <h2>Recently Come Back Online</h2>
-                <div id="online-list">
-                    <!-- Online websites will be populated here -->
-                </div>
+                <h2>Online Websites</h2>
+                <div id="online-list" class="status-list"></div>
+            </div>
+            <div class="offline-websites">
+                <h2>Offline Websites</h2>
+                <div id="offline-list" class="status-list"></div>
             </div>
         </div>
-
-        <div id="status-list"></div>
-        <div class="no-changes" id="no-changes-message" style="display: none;">No Changes</div>
+        <div class="loading-spinner"></div>
     </div>
 
     <script>
-        
-        function fetchSitesData(title) {
-            // Fetch the sites.txt to get the URL associated with each title
-            return fetch('https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/sites.txt') // Adjust the URL if the branch is different
-                .then(response => response.text())
-                .then(data => {
-                    const sites = data.trim().split('\n');
-                    for (const site of sites) {
-                        const [url, siteTitle] = site.split(',');
-                        if (siteTitle.trim() === title) {
-                            return url; // Return the URL if the title matches
-                        }
+        async function fetchStatusData() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/VeerGosai/Taptic-Status/main/output.txt');
+                const text = await response.text();
+                const onlineList = document.getElementById('online-list');
+                const offlineList = document.getElementById('offline-list');
+
+                text.split('\n').forEach(line => {
+                    if (!line.trim()) return;
+                    
+                    const [websitePart, statusPart] = line.split(' - ');
+                    const websiteName = websitePart.replace('Website: ', '').trim();
+                    const status = statusPart.replace('Status: ', '').trim();
+                    
+                    const statusCard = document.createElement('div');
+                    statusCard.classList.add('status-card');
+
+                    const statusDot = document.createElement('div');
+                    statusDot.classList.add('status-dot', status === '200' ? 'green' : 'red');
+                    statusCard.appendChild(statusDot);
+
+                    const websiteText = document.createElement('span');
+                    websiteText.textContent = websiteName;
+                    statusCard.appendChild(websiteText);
+
+                    const visitButton = document.createElement('a');
+                    visitButton.textContent = 'Visit';
+                    visitButton.href = '#'; // Change to actual link if available
+                    visitButton.classList.add('visit-button');
+                    statusCard.appendChild(visitButton);
+
+                    if (status === '200') {
+                        onlineList.appendChild(statusCard);
+                    } else {
+                        offlineList.appendChild(statusCard);
                     }
-                    return ''; // Return an empty string if no match found
-                })
-                .catch(error => {
-                    console.error('Error loading sites:', error);
-                    return ''; // Return an empty string in case of error
                 });
+            } catch (error) {
+                console.error('Error fetching the data:', error);
+            }
         }
 
-        function createStatusElement(title, status, url) {
-            const statusList = document.getElementById('status-list');
-            const statusCard = document.createElement('div');
-            statusCard.className = 'status-card';
-            const statusDotClass = status === 'Offline' ? 'red' : 'green'; // Adjusted for Offline check
-            statusCard.innerHTML = `
-                <span class="status-dot ${statusDotClass}"></span>
-                <span style="flex-grow: 1; text-align: center;">${title}</span>
-                <a href="${url}" target="_blank" class="visit-button">Visit</a>
-            `;
-            statusList.appendChild(statusCard);
-        }
-
-        function attachSearchFunctionality() {
-            const searchInput = document.getElementById('search');
-            searchInput.addEventListener('input', function() {
-                const filter = searchInput.value.toLowerCase();
-                const statusCards = document.querySelectorAll('.status-card');
-                statusCards.forEach(card => {
-                    const titleText = card.querySelector('span:nth-child(2)').textContent.toLowerCase(); // Title text
-                    card.style.display = titleText.includes(filter) ? '' : 'none'; // Filter by title
-                });
-            });
-        }
+        fetchStatusData();
     </script>
 </body>
 </html>
