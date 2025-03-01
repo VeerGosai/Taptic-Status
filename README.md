@@ -1,11 +1,6 @@
-# South African Governmnet Status of website
+# Taptic Status of website
 
 https://veergosai.github.io/Taptic-Status/
-
-Using this site will tell you which South African Government Websites Are Online or Offline
-
-To add a website, add it to sites.txt and submit a pull request
-
 
 
 Red Dot = Offline
